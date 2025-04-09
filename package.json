@@ -1,6 +1,9 @@
 {
   "name": "extract-code",
   "private": true,
+  "bin": {
+    "extract-code": "./dist/index.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "ts-node src/index.ts",
