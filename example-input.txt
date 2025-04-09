@@ -1,19 +1,19 @@
 file: src/types.ts
-··· ts
+``` ts
 export type EditorMode = 'edit' | 'preview' | 'mindmap';
-···
+```
 
 file: src/utils/file-helper.ts
-··· ts
+``` ts
 export function readFile(path: string): string {
   return '';
 }
-···
+```
 
 
-file: ·src/utils/file-helper1.ts·
-··· ts
+file: `src/utils/file-helper1.ts`
+``` ts
 export function readFile(path: string): string {
   return '';
 }
-···
+```
