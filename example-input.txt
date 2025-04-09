@@ -1,0 +1,11 @@
+file: src/types.ts
+··· ts
+export type EditorMode = 'edit' | 'preview' | 'mindmap';
+···
+
+file: src/utils/file-helper.ts
+··· ts
+export function readFile(path: string): string {
+  return '';
+}
+···
