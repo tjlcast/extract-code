@@ -17,7 +17,7 @@ interface FileInfo {
 }
 
 function extractFileInfo(input: string): FileInfo[] {
-  const fileInfoRegex = /file:\s*([^\n]+?)\s*\n```.*?\n([\s\S]*?)\n```/g;
+  const fileInfoRegex = /file:\s*([^\n]+?)\s*\n*?```.*?\n([\s\S]*?)\n```/g;
   const files: FileInfo[] = [];
   let match;
   while ((match = fileInfoRegex.exec(input)) !== null) {
