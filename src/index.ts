@@ -63,12 +63,13 @@ function runFromFile(inputFilePath: string, outDir: string): void {
 const prompt = `
 以下是大模型的结尾提示词:
 >>>
-给出完成的项目文件，文件内容不能省略;
-相关的文件给出输时需要完整的路径文件名和对应的文件内容。如下：
-file: \`src/types.ts\`
-\`\`\` ts
-export type EditorMode = 'edit' | 'preview' | 'mindmap';
-\`\`\`
+要求:
+- 给出完成的项目文件，文件内容不能省略;
+- 相关的文件给出输时需要完整的路径文件名和对应的文件内容。如下：
+  file: \`src/types.ts\`
+  \`\`\` ts
+  export type EditorMode = 'edit' | 'preview' | 'mindmap';
+  \`\`\`
 <<<
   `;
 
