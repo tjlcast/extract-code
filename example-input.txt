@@ -54,3 +54,506 @@ export const useMarkdown = (initialValue: string) => {
   };
 };
 ```
+
+file: `src/utils/markdownParser.ts`
+```ts
+import { MarkdownNode, MindMapNode } from '../types';
+
+export const parseMarkdown = (text: string): MarkdownNode[] => {
+  const lines = text.split('\n');
+  const nodes: MarkdownNode[] = [];
+  let currentList: MarkdownNode | null = null;
+
+  lines.forEach((line) => {
+    if (line.trim() === '') {
+      return;
+    }
+
+    // Headings
+    const headingMatch = line.match(/^(#{1,6})\s(.*)/);
+    if (headingMatch) {
+      nodes.push({
+        id: Math.random().toString(36).substring(2, 9),
+        type: 'heading',
+        value: headingMatch[2],
+        depth: headingMatch[1].length
+      });
+      return;
+    }
+
+    // Lists
+    const listMatch = line.match(/^(\s*)[-*]\s(.*)/);
+    if (listMatch) {
+      const item = {
+        id: Math.random().toString(36).substring(2, 9),
+        type: 'list-item',
+        value: listMatch[2]
+      };
+
+      if (!currentList) {
+        currentList = {
+          id: Math.random().toString(36).substring(2, 9),
+          type: 'list',
+          children: [item]
+        };
+        nodes.push(currentList);
+      } else {
+        currentList.children?.push(item);
+      }
+      return;
+    } else {
+      currentList = null;
+    }
+
+    // Paragraph
+    nodes.push({
+      id: Math.random().toString(36).substring(2, 9),
+      type: 'paragraph',
+      value: line
+    });
+  });
+
+  return nodes;
+};
+
+export const markdownToMindMap = (nodes: MarkdownNode[]): MindMapNode => {
+  const root: MindMapNode = {
+    id: 'root',
+    text: 'Document',
+    children: []
+  };
+
+  nodes.forEach((node) => {
+    if (node.type === 'heading') {
+      const level = node.depth || 1;
+      let parent = root;
+      let currentLevel = 1;
+
+      while (currentLevel < level && parent.children.length > 0) {
+        parent = parent.children[parent.children.length - 1];
+        currentLevel++;
+      }
+
+      parent.children.push({
+        id: node.id,
+        text: node.value || '',
+        children: []
+      });
+    }
+  });
+
+  return root;
+};
+```
+
+file: `src/components/Editor.tsx`
+```ts
+import React from 'react';
+import { EditorMode } from '../types';
+
+interface EditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  mode: EditorMode;
+}
+
+const Editor: React.FC<EditorProps> = ({ value, onChange, mode }) => {
+  if (mode !== 'edit') return null;
+
+  return (
+    <div className="editor-container">
+      <textarea
+        className="editor-textarea"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Write your markdown here..."
+      />
+    </div>
+  );
+};
+
+export default Editor;
+```
+
+file: `src/components/Preview.tsx`
+```ts
+import React from 'react';
+import { MarkdownNode } from '../types';
+import { EditorMode } from '../types';
+
+interface PreviewProps {
+  nodes: MarkdownNode[];
+  mode: EditorMode;
+}
+
+const renderNode = (node: MarkdownNode): React.ReactNode => {
+  switch (node.type) {
+    case 'heading':
+      const HeadingTag = `h${node.depth}` as keyof JSX.IntrinsicElements;
+      return <HeadingTag key={node.id}>{node.value}</HeadingTag>;
+    case 'paragraph':
+      return <p key={node.id}>{node.value}</p>;
+    case 'list':
+      return (
+        <ul key={node.id}>
+          {node.children?.map((child) => (
+            <li key={child.id}>{child.value}</li>
+          ))}
+        </ul>
+      );
+    default:
+      return null;
+  }
+};
+
+const Preview: React.FC<PreviewProps> = ({ nodes, mode }) => {
+  if (mode !== 'preview') return null;
+
+  return (
+    <div className="preview-container">
+      {nodes.map((node) => renderNode(node))}
+    </div>
+  );
+};
+
+export default Preview;
+```
+
+file: `src/components/MindMap.tsx`
+```ts
+import React, { useEffect, useRef } from 'react';
+import { MindMapNode, EditorMode } from '../types';
+
+interface MindMapProps {
+  data: MindMapNode | null;
+  mode: EditorMode;
+}
+
+const MindMap: React.FC<MindMapProps> = ({ data, mode }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (mode !== 'mindmap' || !data || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw mind map
+    const startX = canvas.width / 2;
+    const startY = 50;
+
+    const drawNode = (node: MindMapNode, x: number, y: number) => {
+      // Draw node
+      ctx.fillStyle = '#7c3aed';
+      ctx.strokeStyle = '#5b21b6';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 30, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Draw text
+      ctx.fillStyle = 'white';
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(node.text, x, y);
+
+      // Draw children
+      const angleStep = (Math.PI * 2) / Math.max(node.children.length, 1);
+      const radius = 100;
+
+      node.children.forEach((child, i) => {
+        const childX = x + Math.cos(angleStep * i) * radius;
+        const childY = y + Math.sin(angleStep * i) * radius + 50;
+
+        // Draw connecting line
+        ctx.strokeStyle = '#9ca3af';
+        ctx.beginPath();
+        ctx.moveTo(x, y + 30);
+        ctx.lineTo(childX, childY - 30);
+        ctx.stroke();
+
+        drawNode(child, childX, childY);
+      });
+    };
+
+    drawNode(data, startX, startY);
+  }, [data, mode]);
+
+  if (mode !== 'mindmap') return null;
+
+  return (
+    <div className="mindmap-container">
+      <canvas
+        ref={canvasRef}
+        width={window.innerWidth * 0.8}
+        height={600}
+        className="mindmap-canvas"
+      />
+    </div>
+  );
+};
+
+export default MindMap;
+```
+
+file: `src/components/ModeSwitcher.tsx`
+```ts
+import React from 'react';
+import { EditorMode } from '../types';
+
+interface ModeSwitcherProps {
+  currentMode: EditorMode;
+  onChange: (mode: EditorMode) => void;
+}
+
+const ModeSwitcher: React.FC<ModeSwitcherProps> = ({ currentMode, onChange }) => {
+  return (
+    <div className="mode-switcher">
+      <button
+        className={`mode-button ${currentMode === 'edit' ? 'active' : ''}`}
+        onClick={() => onChange('edit')}
+      >
+        Edit
+      </button>
+      <button
+        className={`mode-button ${currentMode === 'preview' ? 'active' : ''}`}
+        onClick={() => onChange('preview')}
+      >
+        Preview
+      </button>
+      <button
+        className={`mode-button ${currentMode === 'mindmap' ? 'active' : ''}`}
+        onClick={() => onChange('mindmap')}
+      >
+        Mind Map
+      </button>
+    </div>
+  );
+};
+
+export default ModeSwitcher;
+```
+
+file: `src/styles/globals.css`
+```css
+:root {
+  --primary: #7c3aed;
+  --primary-dark: #5b21b6;
+  --secondary: #f59e0b;
+  --background: #f3f4f6;
+  --text: #1f2937;
+  --text-light: #6b7280;
+  --white: #ffffff;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+}
+
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  color: var(--primary);
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.header p {
+  color: var(--text-light);
+  font-size: 1.1rem;
+}
+
+.mode-switcher {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+  gap: 1rem;
+}
+
+.mode-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background-color: var(--white);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mode-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mode-button.active {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+.editor-container, .preview-container, .mindmap-container {
+  background-color: var(--white);
+  border-radius: 0.5rem;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-height: 500px;
+}
+
+.editor-textarea {
+  width: 100%;
+  min-height: 500px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: var(--background);
+}
+
+.preview-container {
+  line-height: 1.6;
+}
+
+.preview-container h1 {
+  color: var(--primary);
+  border-bottom: 2px solid var(--primary);
+  padding-bottom: 0.5rem;
+}
+
+.preview-container h2 {
+  color: var(--primary-dark);
+}
+
+.preview-container ul {
+  padding-left: 2rem;
+}
+
+.preview-container li {
+  margin-bottom: 0.5rem;
+}
+
+.mindmap-canvas {
+  width: 100%;
+  height: 600px;
+  background-color: var(--white);
+  border-radius: 0.5rem;
+}
+```
+
+file: `src/styles/themes.css`
+```css
+/* Additional theme colors can be added here */
+.theme-purple {
+  --primary: #7c3aed;
+  --primary-dark: #5b21b6;
+}
+
+.theme-orange {
+  --primary: #f59e0b;
+  --primary-dark: #d97706;
+}
+
+.theme-green {
+  --primary: #10b981;
+  --primary-dark: #059669;
+}
+
+.theme-pink {
+  --primary: #ec4899;
+  --primary-dark: #db2777;
+}
+```
+
+file: `src/App.tsx`
+```tsx
+import React, { useState } from 'react';
+import { useMarkdown } from './hooks/useMarkdown';
+import { EditorMode } from './types';
+import Editor from './components/Editor';
+import Preview from './components/Preview';
+import MindMap from './components/MindMap';
+import ModeSwitcher from './components/ModeSwitcher';
+import './styles/globals.css';
+import './styles/themes.css';
+
+const initialMarkdown = `# Welcome to Markdown Editor
+
+## Features
+- Edit markdown
+- Preview rendered output
+- Visualize as mind map
+
+### Getting Started
+1. Write some markdown
+2. Switch between modes
+3. See the results!
+
+## About
+This is a modern markdown editor built with React and TypeScript.`;
+
+const App: React.FC = () => {
+  const [mode, setMode] = useState<EditorMode>('edit');
+  const { markdown, setMarkdown, parsedNodes, mindMapNodes } = useMarkdown(initialMarkdown);
+
+  return (
+    <div className="app-container theme-purple">
+      <header className="header">
+        <h1>Modern Markdown Editor</h1>
+        <p>Edit, preview, and visualize your markdown documents</p>
+      </header>
+
+      <ModeSwitcher currentMode={mode} onChange={setMode} />
+
+      <Editor value={markdown} onChange={setMarkdown} mode={mode} />
+      <Preview nodes={parsedNodes} mode={mode} />
+      <MindMap data={mindMapNodes} mode={mode} />
+    </div>
+  );
+};
+
+export default App;
+```
+
+## 使用说明
+
+1. 这个 Markdown 编辑器包含三种模式：
+   - 编辑模式：直接编辑 Markdown 文本
+   - 预览模式：查看渲染后的 Markdown
+   - 思维导图模式：将标题结构可视化为思维导图
+
+2. 特色功能：
+   - 现代化的 UI 设计，鲜艳的色彩方案
+   - 实时解析和预览
+   - 响应式布局
+   - 平滑的动画效果
+
+3. 技术栈：
+   - TypeScript
+   - React Hooks
+   - Canvas API (用于思维导图渲染)
+
+要运行这个项目，你需要一个基本的 React + TypeScript 项目设置（可以通过 create-react-app 或 Vite 创建），然后将这些文件放入相应的目录中。

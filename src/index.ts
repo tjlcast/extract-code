@@ -56,6 +56,7 @@ function runFromFile(inputFilePath: string, outDir: string): void {
 
   const input = fs.readFileSync(inputFilePath, "utf-8");
   const fileInfos = extractFileInfo(input);
+  console.log(`📝 Extracted ${fileInfos.length} files`);
   processFiles(fileInfos, outDir);
 }
 
