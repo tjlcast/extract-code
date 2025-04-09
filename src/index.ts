@@ -47,6 +47,8 @@ function processFiles(fileInfos: FileInfo[], outDir: string): void {
 }
 
 function runFromFile(inputFilePath: string, outDir: string): void {
+  console.log(`Try to load file: ${inputFilePath}`);
+  console.log(`Output directory: ${outDir}`);
   if (!fs.existsSync(inputFilePath)) {
     console.error(`❌ File not found: ${inputFilePath}`);
     process.exit(1);

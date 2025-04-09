@@ -1,19 +1,56 @@
-file: src/types.ts
-``` ts
+# Markdown 编辑器实现
+
+下面是一个完整的现代化 Markdown 编辑器实现，包含编辑、预览和思维导图三种模式。
+
+## 项目结构
+
+
+
+## 文件内容
+
+file: `src/types.ts`
+```ts
 export type EditorMode = 'edit' | 'preview' | 'mindmap';
-```
 
-file: src/utils/file-helper.ts
-``` ts
-export function readFile(path: string): string {
-  return '';
+export interface MarkdownNode {
+  id: string;
+  type: 'heading' | 'paragraph' | 'list' | 'list-item' | 'text' | 'strong' | 'emphasis' | 'code';
+  value?: string;
+  children?: MarkdownNode[];
+  depth?: number;
+}
+
+export interface MindMapNode {
+  id: string;
+  text: string;
+  children: MindMapNode[];
+  x?: number;
+  y?: number;
 }
 ```
 
+file: `src/hooks/useMarkdown.ts`
+```ts
+import { useState, useEffect } from 'react';
+import { MarkdownNode, MindMapNode } from '../types';
+import { parseMarkdown, markdownToMindMap } from '../utils/markdownParser';
 
-file: `src/utils/file-helper1.ts`
-``` ts
-export function readFile(path: string): string {
-  return '';
-}
+export const useMarkdown = (initialValue: string) => {
+  const [markdown, setMarkdown] = useState(initialValue);
+  const [parsedNodes, setParsedNodes] = useState<MarkdownNode[]>([]);
+  const [mindMapNodes, setMindMapNodes] = useState<MindMapNode | null>(null);
+
+  useEffect(() => {
+    const nodes = parseMarkdown(markdown);
+    setParsedNodes(nodes);
+    setMindMapNodes(markdownToMindMap(nodes));
+  }, [markdown]);
+
+  return {
+    markdown,
+    setMarkdown,
+    parsedNodes,
+    mindMapNodes
+  };
+};
 ```
