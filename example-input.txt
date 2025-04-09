@@ -9,3 +9,11 @@ export function readFile(path: string): string {
   return '';
 }
 ···
+
+
+file: ·src/utils/file-helper1.ts·
+··· ts
+export function readFile(path: string): string {
+  return '';
+}
+···
